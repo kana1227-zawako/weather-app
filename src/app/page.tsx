@@ -6,17 +6,25 @@ import { useEffect, useState } from "react";
 type WeatherData = {
   city: string;
   date: string;
+  sunrise: string | null;
+  sunset: string | null;
   temperature: number;
+  cloudCover: number | null;
   description: string;
   humidity: number;
   precipitationProbability: number;
   icon: string;
+  hourlyTemperatures: {
+    label: string;
+    temperature: number | null;
+  }[];
   availableDates: string[];
 };
 
 export default function Home() {
-  const [city, setCity] = useState("Nagoya");
-  const [searchCity, setSearchCity] = useState("Nagoya");
+
+  const[city,setCity] = useState("名古屋")
+  const[searchCity,setSearchCity] = useState("名古屋")
   const [date, setDate] = useState("");
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -174,6 +182,98 @@ export default function Home() {
                 </p>
                 <p className="mt-3 text-xl">{weather.description}</p>
               </div>
+
+              <div className="mt-8 rounded-2xl bg-white/15 p-5">
+  <h3 className="text-lg font-bold">👕 時間帯別の服装アドバイス</h3>
+  <p className="mt-1 text-sm text-sky-100">
+    気温の変化を見て、外出時の服装を考えよう。
+  </p>
+
+  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+    {weather.hourlyTemperatures.map((period) => (
+      <div
+        key={period.label}
+        className="rounded-xl bg-white/15 p-4"
+      >
+        <p className="font-semibold">{period.label}</p>
+
+        {period.temperature !== null ? (
+          <>
+            <p className="mt-2 text-3xl font-bold">
+              {Math.round(period.temperature)}°
+            </p>
+            <p className="mt-2 text-sm">
+              {period.temperature < 10
+                ? "厚手の上着がおすすめ"
+                : period.temperature < 17
+                  ? "ジャケットやカーディガン"
+                  : period.temperature < 24
+                    ? "長袖や薄手の羽織りもの"
+                    : "半袖など涼しい服装"}
+            </p>
+          </>
+        ) : (
+          <p className="mt-3 text-sm text-sky-100">
+            この時間帯の予報はありません
+          </p>
+        )}
+      </div>
+    ))}
+  </div>
+</div>
+<div className="mt-8 rounded-2xl bg-white/15 p-5">
+  <h3 className="text-lg font-bold">🌙 夜空ガイド</h3>
+
+  <p className="mt-2 text-sm text-sky-100">
+    雲の量を参考に、月や星を眺める計画を立てよう。
+  </p>
+
+  <div className="mt-4 rounded-xl bg-white/15 p-4">
+    <p className="font-semibold">☁️ 雲量の目安</p>
+    <p className="mt-2 text-3xl font-bold">
+    {weather.cloudCover !== null
+  ? `${weather.cloudCover}%`
+  : "夜の予報データがありません"}
+    </p>
+
+    <p className="mt-2 text-sm">
+      {weather.cloudCover === null
+  ? "夜の予報データがないため、観察の目安を表示できません。"
+  : weather.cloudCover <= 25
+    ? "雲が少なめ。星空観察に期待できそう！"
+    : weather.cloudCover <= 60
+      ? "雲が広がるかも。空の様子を確認してみよう。"
+      : "雲が多め。月や星が見えにくい可能性があるよ。"}
+    </p>
+  </div>
+  <div className="mt-8 rounded-2xl bg-white/15 p-5">
+  <h3 className="text-lg font-bold">🌅 日の出・日の入り</h3>
+  <p className="mt-2 text-sm text-sky-100">
+    朝のスタートや夕方のお出かけの参考にしよう。
+  </p>
+
+  <div className="mt-4 grid grid-cols-2 gap-4">
+    <div className="rounded-xl bg-white/15 p-4">
+      <p className="text-sm">🌄 日の出</p>
+      <p className="mt-2 text-2xl font-bold">
+        {weather.sunrise ?? "取得できません"}
+      </p>
+    </div>
+
+    <div className="rounded-xl bg-white/15 p-4">
+      <p className="text-sm">🌇 日の入り</p>
+      <p className="mt-2 text-2xl font-bold">
+        {weather.sunset ?? "取得できません"}
+      </p>
+    </div>
+  </div>
+</div>
+
+  <p className="mt-3 text-xs text-sky-100">
+    ※現在の雲量は選択日の予報全体から計算した目安です。
+    夜の空の状態と異なる場合があります。
+  </p>
+</div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="rounded-xl bg-white/15 p-4">

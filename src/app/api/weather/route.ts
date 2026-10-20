@@ -108,6 +108,36 @@ export async function GET(request: NextRequest) {
     }
 
     const forecast = await forecastResponse.json();
+    const sunUrl = new URL("https://api.sunrise-sunset.org/json");
+sunUrl.searchParams.set("lat", String(lat));
+sunUrl.searchParams.set("lng", String(lon));
+sunUrl.searchParams.set("date", date);
+sunUrl.searchParams.set("formatted", "0");
+
+const sunResponse = await fetch(sunUrl.toString(), {
+  cache: "no-store",
+});
+
+const sunData = sunResponse.ok
+  ? await sunResponse.json()
+  : null;
+  const sunrise = sunData?.results?.sunrise
+  ? new Date(sunData.results.sunrise).toLocaleTimeString("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+  : null;
+
+const sunset = sunData?.results?.sunset
+  ? new Date(sunData.results.sunset).toLocaleTimeString("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+  : null;
     const entries = forecast.list.filter((item: {
       dt_txt: string;
     }) => item.dt_txt.startsWith(date));
@@ -135,15 +165,60 @@ export async function GET(request: NextRequest) {
     }) => item.pop * 100);
 
     const representative = entries[Math.floor(entries.length / 2)];
+    const nightEntries = entries.filter((item: {
+      dt_txt: string;
+      clouds: { all: number };
+    }) => {
+      const hour = Number(item.dt_txt.slice(11, 13));
+      return hour >= 18 || hour < 5;
+    });
+    
+    const cloudCover = nightEntries.length
+      ? Math.round(
+          nightEntries.reduce(
+            (sum: number, item: { clouds: { all: number } }) =>
+              sum + item.clouds.all,
+            0
+          ) / nightEntries.length
+        )
+      : null;
+    const timePeriods = [
+      { label: "朝", start: 5, end: 10 },
+      { label: "昼", start: 11, end: 15 },
+      { label: "夕方", start: 16, end: 19 },
+    ];
+    
+    const hourlyTemperatures = timePeriods.map((period) => {
+      const periodEntries = entries.filter((item: {
+        dt_txt: string;
+        main: { temp: number };
+      }) => {
+        const hour = Number(item.dt_txt.slice(11, 13));
+        return hour >= period.start && hour < period.end;
+      });
+    
+      return {
+        label: period.label,
+        temperature: periodEntries.length
+          ? average(periodEntries.map((item: {
+              main: { temp: number };
+            }) => item.main.temp))
+          : null,
+      };
+    });
 
     return NextResponse.json({
-      city: `${city.trim()}`,
+      city: city.trim(),
       date,
+      sunrise,
+      sunset,
       temperature: average(temperatures),
+      cloudCover,
       description: representative.weather[0].description,
       humidity: Math.round(average(humidities)),
       precipitationProbability: Math.round(Math.max(...precipitation)),
       icon: getWeatherEmoji(representative.weather[0].main),
+      hourlyTemperatures,
       availableDates: [
         ...new Set(
           forecast.list.map((item: { dt_txt: string }) =>
